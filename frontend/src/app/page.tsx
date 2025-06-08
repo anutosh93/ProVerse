@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
-import Image from 'next/image';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
-import { ArrowRight, Sparkles, Zap, Target, Layers, Code, BarChart3, Bug, Figma, Brain, CheckCircle, Mail, Phone, Chrome } from 'lucide-react';
+import { ArrowRight, Sparkles, Zap, Target, Layers, Code, BarChart3, Bug, Figma, Brain, CheckCircle, Mail, Phone, Chrome, AlertCircle } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 export default function LandingPage() {
+  const router = useRouter();
+  const { user, loading, error, signUp, signIn, signInWithGoogle } = useAuth();
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [formData, setFormData] = useState({
     name: '',
@@ -18,24 +21,118 @@ export default function LandingPage() {
     password: '',
     confirmPassword: ''
   });
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Redirect if user is already authenticated
+  useEffect(() => {
+    if (user && !loading) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
     }));
+    // Clear form error when user starts typing
+    if (formError) setFormError(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateForm = () => {
+    if (authMode === 'signup') {
+      if (!formData.name?.trim()) {
+        setFormError('Name is required');
+        return false;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setFormError('Passwords do not match');
+        return false;
+      }
+      if (formData.password.length < 6) {
+        setFormError('Password must be at least 6 characters');
+        return false;
+      }
+    }
+    
+    if (!formData.email?.trim()) {
+      setFormError('Email is required');
+      return false;
+    }
+    
+    if (!formData.password?.trim()) {
+      setFormError('Password is required');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement authentication logic
-    console.log('Form submitted:', formData);
+    
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+    setFormError(null);
+
+    try {
+      let result;
+      
+      if (authMode === 'signup') {
+        result = await signUp(formData.email, formData.password, formData.name);
+        if (result.success) {
+          setFormError('Registration successful! Please check your email for verification.');
+          // Optionally clear form or switch to signin
+          setAuthMode('signin');
+          setFormData({ name: '', email: '', phone: '', password: '', confirmPassword: '' });
+        } else {
+          setFormError(result.error || 'Registration failed');
+        }
+      } else {
+        result = await signIn(formData.email, formData.password);
+        if (result.success) {
+          // Redirect will happen automatically via useEffect
+        } else {
+          setFormError(result.error || 'Login failed');
+        }
+      }
+    } catch (error) {
+      setFormError('An unexpected error occurred');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleGoogleAuth = () => {
-    // TODO: Implement Google authentication
-    console.log('Google authentication');
+  const handleGoogleAuth = async () => {
+    try {
+      setIsSubmitting(true);
+      setFormError(null);
+      
+      const result = await signInWithGoogle();
+      if (!result.success) {
+        setFormError(result.error || 'Google authentication failed');
+      }
+      // If successful, the OAuth flow will handle the redirect
+    } catch (error) {
+      setFormError('Google authentication failed');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-lg">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const features = [
     { icon: Brain, title: 'AI Brainstorming', desc: 'Generate innovative ideas with AI assistance' },
@@ -159,6 +256,12 @@ export default function LandingPage() {
                 </TabsList>
                 
                 <TabsContent value="signin" className="space-y-4 mt-6">
+                  {formError && (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-sm">{formError}</span>
+                    </div>
+                  )}
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                       <Input
@@ -169,6 +272,7 @@ export default function LandingPage() {
                         onChange={handleInputChange}
                         className="bg-white/10 border-white/20 text-white placeholder:text-slate-400"
                         required
+                        disabled={isSubmitting}
                       />
                     </div>
                     <div className="space-y-2">
@@ -180,16 +284,36 @@ export default function LandingPage() {
                         onChange={handleInputChange}
                         className="bg-white/10 border-white/20 text-white placeholder:text-slate-400"
                         required
+                        disabled={isSubmitting}
                       />
                     </div>
-                    <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-                      Sign In
-                      <ArrowRight className="w-4 h-4 ml-2" />
+                    <Button 
+                      type="submit" 
+                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                          Signing In...
+                        </>
+                      ) : (
+                        <>
+                          Sign In
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </>
+                      )}
                     </Button>
                   </form>
                 </TabsContent>
                 
                 <TabsContent value="signup" className="space-y-4 mt-6">
+                  {formError && (
+                    <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-sm">{formError}</span>
+                    </div>
+                  )}
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
                       <Input
@@ -200,6 +324,7 @@ export default function LandingPage() {
                         onChange={handleInputChange}
                         className="bg-white/10 border-white/20 text-white placeholder:text-slate-400"
                         required
+                        disabled={isSubmitting}
                       />
                     </div>
                     <div className="space-y-2">
@@ -211,6 +336,7 @@ export default function LandingPage() {
                         onChange={handleInputChange}
                         className="bg-white/10 border-white/20 text-white placeholder:text-slate-400"
                         required
+                        disabled={isSubmitting}
                       />
                     </div>
                     <div className="space-y-2">
@@ -221,22 +347,49 @@ export default function LandingPage() {
                         value={formData.phone}
                         onChange={handleInputChange}
                         className="bg-white/10 border-white/20 text-white placeholder:text-slate-400"
+                        disabled={isSubmitting}
                       />
                     </div>
                     <div className="space-y-2">
                       <Input
                         type="password"
                         name="password"
-                        placeholder="Password"
+                        placeholder="Password (min 6 characters)"
                         value={formData.password}
                         onChange={handleInputChange}
                         className="bg-white/10 border-white/20 text-white placeholder:text-slate-400"
                         required
+                        disabled={isSubmitting}
                       />
                     </div>
-                    <Button type="submit" className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
-                      Create Account
-                      <ArrowRight className="w-4 h-4 ml-2" />
+                    <div className="space-y-2">
+                      <Input
+                        type="password"
+                        name="confirmPassword"
+                        placeholder="Confirm password"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        className="bg-white/10 border-white/20 text-white placeholder:text-slate-400"
+                        required
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <Button 
+                      type="submit" 
+                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                          Creating Account...
+                        </>
+                      ) : (
+                        <>
+                          Create Account
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </>
+                      )}
                     </Button>
                   </form>
                 </TabsContent>
@@ -255,10 +408,20 @@ export default function LandingPage() {
                 <Button
                   onClick={handleGoogleAuth}
                   variant="outline"
-                  className="w-full mt-4 bg-white/10 border-white/20 text-white hover:bg-white/20"
+                  className="w-full mt-4 bg-white/10 border-white/20 text-white hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isSubmitting}
                 >
-                  <Chrome className="w-4 h-4 mr-2" />
-                  Google
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Chrome className="w-4 h-4 mr-2" />
+                      Google
+                    </>
+                  )}
                 </Button>
               </div>
               
