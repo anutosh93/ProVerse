@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { User } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 export interface AuthState {
   user: User | null
@@ -19,6 +19,15 @@ export function useAuth() {
     // Get initial session
     const getInitialSession = async () => {
       try {
+        if (!isSupabaseConfigured || !supabase) {
+          setAuthState({
+            user: null,
+            loading: false,
+            error: null
+          })
+          return
+        }
+
         const { data: { session }, error } = await supabase.auth.getSession()
         if (error) throw error
         
@@ -38,22 +47,31 @@ export function useAuth() {
 
     getInitialSession()
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setAuthState({
-          user: session?.user ?? null,
-          loading: false,
-          error: null
-        })
-      }
-    )
+    // Listen for auth changes only if Supabase is configured
+    if (isSupabaseConfigured && supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          setAuthState({
+            user: session?.user ?? null,
+            loading: false,
+            error: null
+          })
+        }
+      )
 
-    return () => subscription.unsubscribe()
+      return () => subscription.unsubscribe()
+    }
   }, [])
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
+      if (!isSupabaseConfigured || !supabase) {
+        return {
+          success: false,
+          error: 'Authentication service is not configured. Please set up Supabase environment variables.'
+        }
+      }
+
       setAuthState(prev => ({ ...prev, loading: true, error: null }))
       
       const { data, error } = await supabase.auth.signUp({
@@ -78,6 +96,13 @@ export function useAuth() {
 
   const signIn = async (email: string, password: string) => {
     try {
+      if (!isSupabaseConfigured || !supabase) {
+        return {
+          success: false,
+          error: 'Authentication service is not configured. Please set up Supabase environment variables.'
+        }
+      }
+
       setAuthState(prev => ({ ...prev, loading: true, error: null }))
       
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -97,6 +122,10 @@ export function useAuth() {
 
   const signOut = async () => {
     try {
+      if (!isSupabaseConfigured || !supabase) {
+        return { success: true }
+      }
+
       setAuthState(prev => ({ ...prev, loading: true, error: null }))
       
       const { error } = await supabase.auth.signOut()
@@ -112,6 +141,13 @@ export function useAuth() {
 
   const signInWithGoogle = async () => {
     try {
+      if (!isSupabaseConfigured || !supabase) {
+        return {
+          success: false,
+          error: '🔧 Authentication service is not configured.\n\nTo enable Google sign-in:\n1. Create a Supabase project\n2. Set up Google OAuth in Supabase Auth settings\n3. Add your environment variables'
+        }
+      }
+
       setAuthState(prev => ({ ...prev, loading: true, error: null }))
       
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -136,6 +172,7 @@ export function useAuth() {
     signUp,
     signIn,
     signOut,
-    signInWithGoogle
+    signInWithGoogle,
+    isSupabaseConfigured
   }
 } 
