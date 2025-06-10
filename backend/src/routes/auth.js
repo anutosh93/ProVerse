@@ -199,4 +199,94 @@ router.post('/google', async (req, res) => {
   }
 });
 
+// Confirm email (for email confirmation flow)
+router.post('/confirm', async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.json({
+        success: true,
+        data: { message: 'Email confirmation available when Supabase is configured.' }
+      });
+    }
+
+    const { token, type } = req.body;
+
+    if (!token || !type) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Token and type are required' }
+      });
+    }
+
+    const { data, error } = await supabase.auth.verifyOtp({
+      token_hash: token,
+      type: type
+    });
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error: { message: error.message }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user: data.user,
+        session: data.session,
+        message: 'Email confirmed successfully!'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: { message: 'Internal server error' }
+    });
+  }
+});
+
+// Resend confirmation email
+router.post('/resend-confirmation', async (req, res) => {
+  try {
+    if (!supabase) {
+      return res.json({
+        success: true,
+        data: { message: 'Email resend available when Supabase is configured.' }
+      });
+    }
+
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Email is required' }
+      });
+    }
+
+    const { data, error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email
+    });
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error: { message: error.message }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: { message: 'Confirmation email sent! Please check your inbox.' }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: { message: 'Internal server error' }
+    });
+  }
+});
+
 module.exports = router; 

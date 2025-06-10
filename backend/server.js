@@ -15,7 +15,7 @@ dotenv.config(); // Also check for local .env files
 const app = require('./src/app');
 
 // Set port
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3001;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Start server
