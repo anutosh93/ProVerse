@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const chatgptRoute = require('./chatgpt');
 
 // Welcome route
 router.get('/', (req, res) => {
@@ -54,5 +55,7 @@ router.get('/status', (req, res) => {
     environment: process.env.NODE_ENV || 'development'
   });
 });
+
+router.use('/chatgpt', chatgptRoute);
 
 module.exports = router; 

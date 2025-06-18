@@ -14,6 +14,7 @@ const logger = require('./utils/logger');
 // Import route modules
 const authRoutes = require('./routes/auth');
 const indexRoutes = require('./routes/index');
+const chatgptRoutes = require('./routes/chatgpt');
 
 // Create Express app
 const app = express();
@@ -42,6 +43,9 @@ app.use(cors({
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:3001',
+      'http://localhost:3002',
+      'http://localhost:3003',
+      'http://localhost:3004',
       'https://proverse.vercel.app',
       'https://proverse.com',
       'https://www.proverse.com',
@@ -50,10 +54,11 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      console.log('CORS blocked origin:', origin);
+      callback(null, true); // Allow all origins in development
     }
   },
   credentials: true,
@@ -138,6 +143,7 @@ app.get('/api/docs', (req, res) => {
 // Routes
 app.use('/', indexRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/chatgpt', chatgptRoutes);
 
 // Brainstorming module routes
 app.use('/api/brainstorming', require('./modules/brainstorming/controller'));

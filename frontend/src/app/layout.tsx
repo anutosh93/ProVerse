@@ -81,6 +81,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <head>
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+      </head>
       <body className={`${inter.className} antialiased`}>
         <Providers>
           {children}
