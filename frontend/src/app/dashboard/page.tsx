@@ -8,8 +8,10 @@ import { Badge } from '../../components/ui/badge'
 import { Sparkles, LogOut, User, Mail, Calendar, MessageSquare, TrendingUp, Target, BarChart3, Users, Shield, DollarSign, AlertTriangle } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import Sidebar from '../../components/Sidebar'
+import { ChatAssistant } from '../../components/ChatAssistant'
 
 export default function Dashboard() {
+  const [isChatOpen, setIsChatOpen] = useState(false)
   const router = useRouter()
   const { user, loading, signOut } = useAuth()
   const [activeModule, setActiveModule] = useState('Idea Validation');
@@ -191,7 +193,7 @@ IMPORTANT: Include specific numbers, percentages, market data, and quantified me
   return (
     <div className="flex min-h-screen">
       <Sidebar activeModule={activeModule} onModuleSelect={setActiveModule} />
-      <div className="flex-1">
+      <div className={`flex-1 transition-all duration-300 ${isChatOpen ? 'mr-[30%]' : ''}`}>
         {activeModule === 'Idea Validation' ? (
           <div className="max-w-7xl mx-auto mt-10 p-6">
             {/* Header Section */}
@@ -521,6 +523,9 @@ IMPORTANT: Include specific numbers, percentages, market data, and quantified me
           </div>
         )}
       </div>
+      
+      {/* Chat Assistant - Always visible */}
+      <ChatAssistant onOpenChange={setIsChatOpen} />
     </div>
   )
 } 
